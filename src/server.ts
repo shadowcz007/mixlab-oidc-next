@@ -1,14 +1,34 @@
-// server.ts 占位 stub —— 阶段 4 实现 createMixLabClient 完整逻辑
-// 当前暴露类型 + throw stub，让 index.ts / 顶层能 typecheck。
+import { createHandlers, type HandlersConfig } from "./helpers/handlers";
+
+// ============================================================
+// createMixLabClient — 路径 B 的入口
+//
+// 用法：
+//   const client = createMixLabClient({
+//     issuer: process.env.MIXLAB_ISSUER!,
+//     clientId: process.env.MIXLAB_CLIENT_ID!,
+//     baseUrl: process.env.NEXT_PUBLIC_BASE_URL!,
+//     session: { password: process.env.SESSION_PASSWORD! },
+//   });
+//
+//   export const GET = (req) => client.handlers.login(req);
+//   export const GET = (req) => client.handlers.callback(req);  // 默认 /login
+//   export const POST = (req) => client.handlers.logout(req);
+//   export const GET = () => client.handlers.me();
+// ============================================================
 
 export interface MixLabClientConfig {
   /** OIDC issuer URL（如 "https://www.mixlab.top"） */
   issuer: string;
   /** MixLab 后台申请的 public client ID */
   clientId: string;
-  /** 应用 base URL（必须显式 env 注入，禁止从 host header 推断） */
+  /**
+   * 应用 base URL（必须显式 env 注入）
+   * ★ 禁止从 host header 推断（防 host header injection）
+   * ★ 必须在 OIDC provider 后台注册的 redirect_uri 完全一致
+   */
   baseUrl: string;
-  /** 回调路径，默认 "/login" */
+  /** 回调路径，默认 "/login"（与 MixLab 后台注册的回调 URI 一致） */
   redirectPath?: string;
   /** OIDC scopes，默认 ["openid","profile","email"] */
   scopes?: string[];
@@ -18,9 +38,7 @@ export interface MixLabClientConfig {
     password: string;
     /** 默认 "mixlab-session" */
     cookieName?: string;
-    /** 默认 14 天 */
-    ttlSeconds?: number;
-    /** 默认 NODE_ENV === "production" */
+    /** 强制 secure；默认根据 NODE_ENV */
     secure?: boolean;
   };
 }
@@ -34,6 +52,36 @@ export interface MixLabClient {
   };
 }
 
-export function createMixLabClient(_cfg: MixLabClientConfig): MixLabClient {
-  throw new Error("createMixLabClient: not implemented yet — coming in v0.1 stage 4");
+const DEFAULT_SCOPES = ["openid", "profile", "email"];
+const DEFAULT_REDIRECT_PATH = "/login";
+const DEFAULT_COOKIE_NAME = "mixlab-session";
+
+/**
+ * 创建 MixLab OIDC 客户端
+ * - 立即 fail-fast 校验必要 config
+ * - 返回的 handlers 挂到 Route Handler 上即可用
+ */
+export function createMixLabClient(cfg: MixLabClientConfig): MixLabClient {
+  // fail-fast
+  if (!cfg.issuer) throw new Error("createMixLabClient: issuer is required");
+  if (!cfg.clientId) throw new Error("createMixLabClient: clientId is required");
+  if (!cfg.baseUrl) throw new Error("createMixLabClient: baseUrl is required");
+  if (!cfg.session?.password) {
+    throw new Error("createMixLabClient: session.password is required");
+  }
+
+  const normalized: HandlersConfig = {
+    issuer: cfg.issuer,
+    clientId: cfg.clientId,
+    baseUrl: cfg.baseUrl.replace(/\/+$/, ""), // 去尾 slash
+    redirectPath: cfg.redirectPath ?? DEFAULT_REDIRECT_PATH,
+    scopes: cfg.scopes ?? DEFAULT_SCOPES,
+    sessionPassword: cfg.session.password,
+    cookieName: cfg.session.cookieName ?? DEFAULT_COOKIE_NAME,
+    secure: cfg.session.secure ?? process.env.NODE_ENV === "production",
+  };
+
+  return {
+    handlers: createHandlers(normalized),
+  };
 }

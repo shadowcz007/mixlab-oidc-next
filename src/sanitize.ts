@@ -1,5 +1,22 @@
-// sanitize.ts 占位 stub —— 阶段 5 实现完整逻辑
-// 当前返回 input 透传，保持 typecheck 通过。
-export function sanitizeReturnTo(input: string | null | undefined, fallback = "/"): string {
-  return input ?? fallback;
+// ============================================================
+// Open redirect 防护：sanitizeReturnTo
+//
+// 从 Poll Pink src/app/api/auth/login/route.ts:23-24 抽出来。
+//
+// 规则：
+// 1. null / undefined / 空 → fallback
+// 2. 不以 "/" 开头 → fallback（防外链）
+// 3. 以 "//" 开头 → fallback（防 protocol-relative URL //evil.com）
+// 4. 以 "/\" 开头 → fallback（防 IE/Edge quirk）
+// ============================================================
+
+export function sanitizeReturnTo(
+  input: string | null | undefined,
+  fallback = "/"
+): string {
+  if (!input) return fallback;
+  if (!input.startsWith("/")) return fallback;
+  if (input.startsWith("//")) return fallback;
+  if (input.startsWith("/\\")) return fallback;
+  return input;
 }

@@ -84,7 +84,31 @@ export async function verifyIdTokenWithKey(
     name: typeof payload.name === "string" ? payload.name : undefined,
     email: typeof payload.email === "string" ? payload.email : undefined,
     picture: typeof payload.picture === "string" ? payload.picture : undefined,
+    // v0.1.5+:把 payload 里的所有 claim 都透传出来(包括 bio / location /
+    // social_links 等扩展 claim)。index signature 允许 TypeScript 端访问。
+    ...pickExtraClaims(payload),
   };
+}
+
+/**
+ * 从 jose payload 中挑出字符串型扩展 claim
+ * - 仅保留 string 类型(避免序列化对象/数组的 JSON.stringify 复杂度)
+ * - 排除标准 4 个 claim(已经在 return 对象里显式设了)
+ * - 排除 OIDC 保留字段(iss/aud/exp/iat 等)避免泄漏
+ */
+function pickExtraClaims(payload: Record<string, unknown>): Record<string, string | undefined> {
+  const RESERVED = new Set([
+    "sub", "name", "email", "picture", // 已在主对象里
+    "iss", "aud", "exp", "iat", "nbf", // OIDC 保留
+    "jti", "azp", "nonce", "acr", "amr", "auth_time", // OIDC 保留
+  ])
+  const out: Record<string, string | undefined> = {}
+  for (const [k, v] of Object.entries(payload)) {
+    if (!RESERVED.has(k) && typeof v === "string") {
+      out[k] = v
+    }
+  }
+  return out
 }
 
 /** 测试 / 调试用：清空 JWKS cache */

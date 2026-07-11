@@ -5,12 +5,16 @@
 // 核心类型保持稳定；阶段 2 不会改；后续 v0.2 可扩展。
 // ============================================================
 
-/** OIDC id_token 解析后的 user 信息（最小集） */
+/** OIDC id_token 解析后的 user 信息 */
 export interface OidcUserInfo {
   sub: string;
   name?: string;
   email?: string;
   picture?: string;
+  // v0.1.5+:扩展 claim(AgentLink 端在 id_token 一起发,SDK 自动解析)
+  // RP 端(RP=消费方,如 mixlab-home)用 `as` cast 或 extends 即可拿到
+  // 字段缺失时为 undefined(取决于 OP 是否在 id_token 带这些 claim)
+  [key: string]: unknown;
 }
 
 /** OIDC token endpoint 响应 */

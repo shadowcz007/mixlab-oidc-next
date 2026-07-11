@@ -1,6 +1,6 @@
 {
   "name": "mixlab-oidc-next",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "MixLab OIDC SDK for Next.js — login in 10 minutes (Path B: iron-session).",
   "license": "MIT",
   "type": "module",

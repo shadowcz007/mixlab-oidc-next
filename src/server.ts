@@ -1,4 +1,5 @@
 import { createHandlers, type HandlersConfig } from "./helpers/handlers";
+import { fetchDiscovery } from "./core/discovery";
 
 // ============================================================
 // createMixLabClient — 路径 B 的入口
@@ -50,6 +51,30 @@ export interface MixLabClient {
     logout(req: Request): Promise<Response>;
     me(): Promise<Response>;
   };
+  /**
+   * 预热 in-memory cache（discovery + JWKS 解析器）
+   *
+   * Vercel Serverless cold start 时，首次 /api/auth/login 路由会同步等待
+   * fetchDiscovery + jose JWKS 初始化（合计 ~200-400ms）。在 Next.js
+   * `instrumentation.ts` 启动钩子里调一次 warmUp()，第一次用户进站就能
+   * 命中 in-memory cache，省掉这 200-400ms。
+   *
+   * 用法：
+   * ```ts
+   * // src/instrumentation.ts
+   * export async function register() {
+   *   if (process.env.NEXT_RUNTIME === "nodejs") {
+   *     const { mixlabClient } = await import("@/lib/auth/mixlab-client");
+   *     await mixlabClient.warmUp();   // fire-and-forget 也行
+   *   }
+   * }
+   * ```
+   *
+   * - 失败抛错（应被外面 try/catch 捕获，避免阻断启动）
+   * - 幂等：10 分钟内多次调用只 fetch 一次
+   * - fire-and-forget 也是安全的：失败不会污染 cache
+   */
+  warmUp(): Promise<void>;
 }
 
 const DEFAULT_SCOPES = ["openid", "profile", "email"];
@@ -83,5 +108,16 @@ export function createMixLabClient(cfg: MixLabClientConfig): MixLabClient {
 
   return {
     handlers: createHandlers(normalized),
+    /**
+     * 预热 discovery in-memory cache
+     * - fail-soft：抛错时由调用方决定是否吞掉
+     * - 幂等：10min TTL 内多次调只 fetch 一次
+     */
+    async warmUp() {
+      await fetchDiscovery(cfg.issuer);
+      // 也可加 jwks 预热（jose createRemoteJWKSet 是 lazy 的，
+      // 第一次 verify 才会触发；目前 fetchDiscovery 已覆盖最大成本
+      // —— discovery fetch，jwks 解析代价小）。
+    },
   };
 }

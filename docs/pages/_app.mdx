@@ -1,0 +1,36 @@
+# mixlab-oidc-next
+
+> MixLab OIDC SDK for Next.js — login in 10 minutes.
+
+为 Next.js 项目提供 MixLab OIDC 登录，基于 Poll Pink 生产验证的登录流程。
+
+## 安装
+
+```bash npm2yarn
+npm install mixlab-oidc-next next-auth@beta
+```
+
+## 10 分钟跑通
+
+```bash
+# 1. scaffold 文件
+npx mixlab-oidc-next init
+
+# 2. 填环境变量
+cp .env.example .env.local
+# 编辑 .env.local：
+#   MIXLAB_CLIENT_ID=<从 MixLab 后台拿>
+#   AUTH_SECRET=$(openssl rand -base64 32)
+
+# 3. 启动
+npm run dev
+```
+
+打开浏览器，点 "Sign in with MixLab"，完成登录。
+
+## 下一步
+
+- [Getting Started](getting-started) — 完整接入流程
+- [API Reference](api-reference) — `MixLab()` / `createMixLabClient()` / `createAuthProxy()`
+- [App Router Guide](guides/app-router) — RSC + Server Action
+- [Pages Router Guide](guides/pages-router) — getServerSideProps + useSession

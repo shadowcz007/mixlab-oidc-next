@@ -1,0 +1,61 @@
+# Pages Router Guide
+
+## Session Provider
+
+Pages Router 需要在 `_app.tsx` 加 `<SessionProvider>` 才能用 `useSession`：
+
+```tsx
+// pages/_app.tsx
+import type { AppProps } from "next/app";
+import { SessionProvider } from "next-auth/react";
+
+export default function App({
+  Component,
+  pageProps: { session, ...pageProps },
+}: AppProps) {
+  return (
+    <SessionProvider session={session}>
+      <Component {...pageProps} />
+    </SessionProvider>
+  );
+}
+```
+
+## getServerSideProps 注入 session
+
+```tsx
+// pages/index.tsx
+import type { GetServerSideProps } from "next";
+import { auth } from "@/auth";
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  const session = await auth();
+  return { props: { session } };
+};
+```
+
+## 客户端 useSession
+
+```tsx
+import { useSession, signIn, signOut } from "next-auth/react";
+
+export default function Home() {
+  const { data: session } = useSession();
+  if (session) {
+    return <button onClick={() => signOut()}>Sign out</button>;
+  }
+  return <button onClick={() => signIn("mixlab")}>Sign in</button>;
+}
+```
+
+## middleware.ts 启用全局登录保护
+
+Next 14/15：`middleware.ts`（Next 16+ 改名为 `proxy.ts`）
+
+```ts
+import { createAuthProxy } from "mixlab-oidc-next/proxy";
+
+export default createAuthProxy({
+  publicPaths: ["/api/auth/", "/_next/", "/favicon.ico"],
+});
+```

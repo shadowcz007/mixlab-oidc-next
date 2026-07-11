@@ -1,0 +1,70 @@
+# App Router Guide
+
+## Server Component 中获取 session
+
+```tsx
+import { auth } from "@/auth";
+
+export default async function Page() {
+  const session = await auth();
+  if (!session?.user) return <SignInButton />;
+  return <UserProfile user={session.user} />;
+}
+```
+
+## Server Action 中登入/登出
+
+```tsx
+import { signIn, signOut } from "@/auth";
+
+export default function Page() {
+  return (
+    <form action={async () => {
+      "use server";
+      await signIn("mixlab", { redirectTo: "/" });
+    }}>
+      <button type="submit">Sign in with MixLab</button>
+    </form>
+  );
+}
+```
+
+## 客户端 useSession
+
+> App Router 没有原生 `useSession`，需要从 `next-auth/react` import
+
+```tsx
+"use client";
+import { useSession } from "next-auth/react";
+
+export function UserBadge() {
+  const { data: session } = useSession();
+  if (!session) return null;
+  return <span>{session.user.name}</span>;
+}
+```
+
+别忘了在 root layout 加 `<SessionProvider>`（仅 Pages Router 需要；App Router 通过 Server Component 直接读）。
+
+## proxy.ts 启用全局登录保护
+
+Next 16+：`proxy.ts`
+Next 14/15：改名为 `middleware.ts`
+
+```ts
+import { createAuthProxy } from "mixlab-oidc-next/proxy";
+
+export default createAuthProxy({
+  publicPaths: ["/api/auth/", "/_next/", "/favicon.ico"],
+});
+```
+
+## 自建 IdP
+
+```ts
+MixLab({
+  clientId: process.env.MIXLAB_CLIENT_ID!,
+  issuer: "https://your-idp.example.com",
+  // wellKnown: "https://your-idp.example.com/.well-known/openid-configuration",
+});
+```

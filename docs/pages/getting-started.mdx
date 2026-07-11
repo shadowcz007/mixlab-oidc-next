@@ -1,0 +1,55 @@
+# Getting Started
+
+## 1. 在 MixLab 后台申请 client
+
+访问 [MixLab](https://www.mixlab.top) 后台 → OAuth 应用 → 创建 public client。
+
+记下：
+- `client_id`（如 `cid_xxx`）
+- 注册回调 URI：`https://your-app.com/login`（必须**精确**匹配）
+
+## 2. 安装 SDK
+
+```bash npm2yarn
+npm install mixlab-oidc-next next-auth@beta
+```
+
+## 3. Scaffold 文件
+
+```bash
+npx mixlab-oidc-next init
+```
+
+生成 4 个文件（不覆盖已有）：
+- `.env.example` — MixLab OIDC env vars
+- `auth.ts` — NextAuth v5 + MixLab provider
+- `app/api/auth/[...nextauth]/route.ts` — handlers 挂载
+- `proxy.ts` — 全局登录保护
+
+## 4. 填环境变量
+
+```bash
+cp .env.example .env.local
+```
+
+编辑 `.env.local`：
+
+```bash
+MIXLAB_ISSUER=https://www.mixlab.top
+MIXLAB_CLIENT_ID=<你的 client_id>
+AUTH_SECRET=<openssl rand -base64 32>
+```
+
+## 5. 启动
+
+```bash
+npm run dev
+```
+
+浏览器打开 `http://localhost:3000`，点 "Sign in with MixLab" → MixLab 登录页 → 授权 → 回跳到首页。
+
+## 下一步
+
+- 配置 [proxy / middleware](guides/proxy)
+- 切换到 [Pages Router](guides/pages-router)
+- 看 [API Reference](api-reference)

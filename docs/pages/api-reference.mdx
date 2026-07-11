@@ -1,0 +1,107 @@
+# API Reference
+
+## `MixLab()` — NextAuth Provider
+
+```ts
+import { MixLab } from "mixlab-oidc-next/provider";
+
+MixLab({
+  clientId: string,        // 必填
+  issuer?: string,         // 默认 https://www.mixlab.top
+  wellKnown?: string,      // 默认从 issuer 推
+  scope?: string[],        // 默认 ["openid", "profile", "email"]
+  id?: string,             // 默认 "mixlab"
+}): NextAuth OIDCConfig
+```
+
+### 用法
+
+```ts
+// auth.ts
+import NextAuth from "next-auth";
+import { MixLab } from "mixlab-oidc-next/provider";
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  providers: [MixLab({ clientId: process.env.MIXLAB_CLIENT_ID! })],
+});
+```
+
+## `createMixLabClient()` — 独立 Server Client
+
+> 给**不用 NextAuth** 的项目用
+
+```ts
+import { createMixLabClient } from "mixlab-oidc-next/server";
+
+createMixLabClient({
+  issuer: string,                          // 必填
+  clientId: string,                        // 必填
+  baseUrl: string,                         // 必填，禁从 host 推断
+  redirectPath?: string,                   // 默认 "/login"
+  scopes?: string[],                       // 默认 ["openid","profile","email"]
+  session: {
+    password: string,                      // 必填，≥32 字符
+    cookieName?: string,                   // 默认 "mixlab-session"
+    secure?: boolean,                      // 默认 NODE_ENV==="production"
+  },
+}): {
+  handlers: {
+    login(req: Request): Promise<Response>,
+    callback(req: Request): Promise<Response>,
+    logout(req: Request): Promise<Response>,
+    me(): Promise<Response>,
+  }
+}
+```
+
+### 用法
+
+```ts
+// app/api/auth/login/route.ts
+export const GET = (req: Request) => client.handlers.login(req);
+// app/api/auth/callback/route.ts  (用户可换 path)
+export const GET = (req: Request) => client.handlers.callback(req);
+// app/api/auth/logout/route.ts
+export const POST = (req: Request) => client.handlers.logout(req);
+// app/api/auth/me/route.ts
+export const GET = () => client.handlers.me();
+```
+
+## `createAuthProxy()` — 全局登录保护
+
+```ts
+import { createAuthProxy } from "mixlab-oidc-next/proxy";
+
+createAuthProxy({
+  publicPaths?: string[],   // 默认 ["/api/auth/", "/_next/", "/favicon.ico"]
+  cookieName?: string,      // 默认 "mixlab-session"
+  loginPath?: string,       // 默认 "/login"
+}): NextMiddleware
+```
+
+### 用法
+
+```ts
+// proxy.ts（Next 16+）或 middleware.ts（Next 14/15）
+import { createAuthProxy } from "mixlab-oidc-next/proxy";
+
+export default createAuthProxy({
+  publicPaths: ["/api/auth/", "/_next/", "/favicon.ico"],
+});
+```
+
+## `sanitizeReturnTo()` — Open Redirect 防护
+
+```ts
+import { sanitizeReturnTo } from "mixlab-oidc-next/sanitize";
+
+sanitizeReturnTo(
+  input: string | null | undefined,
+  fallback?: string  // 默认 "/"
+): string
+```
+
+返回安全的 returnTo 路径。规则：
+- 必须 `/` 开头
+- 不能 `//` 开头（防 protocol-relative）
+- 不能 `/\` 开头（防 IE quirk）

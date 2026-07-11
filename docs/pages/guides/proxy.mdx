@@ -1,0 +1,44 @@
+# proxy.ts / middleware.ts
+
+## Next.js 版本对应
+
+| Next.js 版本 | 文件名 | 默认 runtime |
+|---|---|---|
+| 14.x | `middleware.ts` | Edge |
+| 15.x | `middleware.ts` | Edge |
+| 16.x | `proxy.ts` | Node |
+
+v14/v15 的 middleware.ts 改名为 proxy.ts 即可用于 v16。
+
+## 基本用法
+
+```ts
+// proxy.ts 或 middleware.ts
+import { createAuthProxy } from "mixlab-oidc-next/proxy";
+
+export default createAuthProxy({
+  publicPaths: ["/api/auth/", "/_next/", "/favicon.ico"],
+  loginPath: "/login",         // 默认
+  cookieName: "mixlab-session", // 默认
+});
+```
+
+## 行为
+
+- 路径在 `publicPaths` 白名单 → 放行
+- 有 `cookieName` 指定的 session cookie → 放行
+- 否则 → 302 跳 `loginPath?returnTo=<原 URL>`
+
+## ⚠️ 不要把 proxy 当作唯一鉴权
+
+Next.js 官方建议：**每个 Server Action / Route Handler 单独 `await auth()` 校验**。
+proxy/middleware 只做"轻量拦截"，不能在 data layer 跳过校验。
+
+```ts
+// ✓ 正确：每个 endpoint 都校验
+export async function GET() {
+  const session = await auth();
+  if (!session) return new Response("Unauthorized", { status: 401 });
+  // ...
+}
+```

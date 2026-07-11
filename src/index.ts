@@ -8,3 +8,4 @@
 
 export { sanitizeReturnTo } from "./sanitize";
 export type { MixLabClient, MixLabClientConfig } from "./server";
+export type { OidcUserInfo } from "./core/types";
